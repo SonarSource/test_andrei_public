@@ -14,14 +14,26 @@ function installTravisTools {
 function setupEnvironment {
   installTravisTools
 
-  export PROJECT_NAME="test_andrei_public" # ${CIRRUS_REPO_NAME}
+  export PROJECT_NAME="test_andrei_private" # ${CIRRUS_REPO_NAME}
   export GITHUB_REPO=${TRAVIS_REPO_SLUG} # CIRRUS_REPO_FULL_NAME
-  export GITHUB_BRANCH=${TRAVIS_BRANCH} #$CIRRUS_BRANCH
   export BUILD_NUMBER=${TRAVIS_BUILD_NUMBER} # cirrusBuildNumber() in cirrus-env script...
-  export PULL_REQUEST=${TRAVIS_PULL_REQUEST} # ${CIRRUS_PR:-false}
-  export GIT_SHA1=${TRAVIS_COMMIT} # $CIRRUS_CHANGE_IN_REPO
+  export PULL_REQUEST_NUMBER=${TRAVIS_PULL_REQUEST} # ${CIRRUS_PR:-false}
   export PIPELINE_ID=${TRAVIS_BUILD_ID} # CIRRUS_BUILD_ID
   export ARTIFACT_URL="$ARTIFACTORY_URL/webapp/#/builds/$PROJECT_NAME/$BUILD_NUMBER"
+
+  if [ -z $TRAVIS_PULL_REQUEST_SHA ]; then
+    export GIT_SHA1=${TRAVIS_COMMIT} # $CIRRUS_CHANGE_IN_REPO
+    export GITHUB_BRANCH_NAME=${TRAVIS_BRANCH} #$CIRRUS_BRANCH
+    export STAGE_TYPE="branch"
+    export STAGE_ID=${GITHUB_BRANCH_NAME}
+  else
+    export GIT_SHA1=${TRAVIS_PULL_REQUEST_SHA}
+    export GITHUB_BRANCH_NAME=${TRAVIS_PULL_REQUEST_BRANCH}
+    export STAGE_TYPE="pr_number"
+    export STAGE_ID=${PULL_REQUEST_NUMBER}
+  fi
+
+  echo "======= SHA1 is ${GIT_SHA1} on branch '${GITHUB_BRANCH_NAME}'. Burgr stage '${STAGE_TYPE} with stage ID '${STAGE_ID} ======="
 
   # get current version from pom
   export CURRENT_VERSION=`maven_expression "project.version"`
@@ -35,14 +47,6 @@ function setupEnvironment {
     export PROJECT_VERSION=`maven_expression "project.version"`
     echo "======= Found RELEASE version ======="
   fi
-
-  #for a pull request, we send the pr_number, not the branch name
-  PRBRANCH=branch
-  if [[ $GITHUB_BRANCH == "PULLREQUEST-"* ]]
-  then
-    PRBRANCH=pr_number
-    GITHUB_BRANCH=$(echo $GITHUB_BRANCH | cut -d'-' -f 2)
-  fi
 }
 
 # Burgr notifications
@@ -55,14 +59,13 @@ function callBurgr {
     -u"${BURGRX_USER}:${BURGRX_PASSWORD}" \
     $2)
 
+  echo "The payload sent to burgr was:"
+  cat $1
   if [[ "$HTTP_CODE" != "200" ]] && [[ "$HTTP_CODE" != "201" ]]; then
     echo ""
     echo "Burgr did not ACK notification ($HTTP_CODE)"
     echo "ERROR:"
     cat out.txt
-    echo ""
-    echo "The payload sent to burgr was:"
-    cat $1
     echo ""
     exit -1
   else  
@@ -73,7 +76,7 @@ function callBurgr {
 }
 
 function notifyBurgr {
-
+  # the Burgr stage type can be 'branch' or 'pr_number'
   BURGR_FILE=burgr
   cat > $BURGR_FILE <<EOF1 
   {
@@ -83,7 +86,7 @@ function notifyBurgr {
     "system": "travis",
     "type": "$2",
     "number": "$PIPELINE_ID",
-    "branch": "$GITHUB_BRANCH",
+    "$STAGE_TYPE": "$STAGE_ID",
     "sha1": "$GIT_SHA1",
     "url":"$3",
     "status": "passed",
@@ -97,7 +100,7 @@ EOF1
 }
 
 function buildAndPromote {
-  START_ISO8601=`date --utc +%FT%TZ`
+  BUILD_START_DATETIME=`date --utc +%FT%TZ`
 
   export MAVEN_OPTS="-Xmx1536m -Xms128m"
   mvn deploy \
@@ -105,18 +108,18 @@ function buildAndPromote {
     -B -e -V
 
   # Google Cloud Function to do the promotion
-  GCF_PROMOTE_URL="$PROMOTE_URL/$GITHUB_REPO/$GITHUB_BRANCH/$BUILD_NUMBER/$PULL_REQUEST"
+  GCF_PROMOTE_URL="$PROMOTE_URL/$GITHUB_REPO/$GITHUB_BRANCH_NAME/$BUILD_NUMBER/$PULL_REQUEST_NUMBER"
   echo "GCF_PROMOTE_URL: $GCF_PROMOTE_URL"
 
   curl -sfSL -H "Authorization: Bearer $GCF_ACCESS_TOKEN" "$GCF_PROMOTE_URL"
 
   # Notify Burgr
 
-  END_DATE_ISO8601=`date --utc +%FT%TZ`
+  BUILD_END_DATETIME=`date --utc +%FT%TZ`
   # $TRAVIS_JOB_WEB_URL is defined by Travis
 
-  notifyBurgr "build" "promote" "$TRAVIS_JOB_WEB_URL" "$START_ISO8601" "$END_DATE_ISO8601"
-  notifyBurgr "artifacts" "promotion" "$ARTIFACT_URL" "$END_DATE_ISO8601" "$END_DATE_ISO8601"
+  notifyBurgr "build" "promote" "$TRAVIS_JOB_WEB_URL" "$BUILD_START_DATETIME" "$BUILD_END_DATETIME"
+  notifyBurgr "artifacts" "promotion" "$ARTIFACT_URL" "$BUILD_END_DATETIME" "$BUILD_END_DATETIME"
 
   BURGR_VERSION_FILE=burgr_version
   cat > $BURGR_VERSION_FILE <<EOF1
@@ -133,11 +136,11 @@ EOF1
 }
 
 function doRelease {
-  if [[ $CURRENT_VERSION =~ "-build" ]] || [[ $CURRENT_VERSION =~ "-SNAPSHOT" ]]; then   
-    echo "This is a dev build, not releasing"
+  if [[ $STAGE_ID != "master" ]] || [[ $CURRENT_VERSION =~ "-build" ]] || [[ $CURRENT_VERSION =~ "-SNAPSHOT" ]]; then
+    echo "This is a dev build or is not on master, not releasing."
     exit 0
   else
-    echo "About to release $ARTIFACTID"
+    echo "About to release ${ARTIFACTID}."
   fi
 
   # from the old Jenkins promote-release.sh script
@@ -167,8 +170,8 @@ function doRelease {
 
   # Notify Burgr
 
-  RELEASE_ISO8601=`date --utc +%FT%TZ`
-  notifyBurgr "release" "release" "$ARTIFACT_URL" "$RELEASE_ISO8601" "$RELEASE_ISO8601"
+  RELEASE_DATETIME=`date --utc +%FT%TZ`
+  notifyBurgr "release" "release" "$ARTIFACT_URL" "$RELEASE_DATETIME" "$RELEASE_DATETIME"
 }
 
 setupEnvironment
