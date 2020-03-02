@@ -136,7 +136,7 @@ EOF1
   callBurgr $BURGR_VERSION_FILE $BURGR_VERSION_URL
 }
 
-function doRelease {
+function doRelease  {
   if [[ $STAGE_ID != "master" ]] || [[ $CURRENT_VERSION =~ "-build" ]] || [[ $CURRENT_VERSION =~ "-SNAPSHOT" ]]; then
     echo "This is a dev build or is not on master, not releasing."
     exit 0
@@ -148,7 +148,7 @@ function doRelease {
 
   STATUS='released'
   OP_DATE=$(date +%Y%m%d%H%M%S)
-  TARGET_REPOSITORY="sonarsource-private-releases"
+  TARGET_REPOSITORY=$1
   DATA_JSON="{ \"status\": \"$STATUS\", \"properties\": { \"release\" : [ \"$OP_DATE\" ]}, \"targetRepo\": \"$TARGET_REPOSITORY\", \"copy\": false }"
 
   RELEASE_URL="$ARTIFACTORY_URL/api/build/promote/$PROJECT_NAME/$BUILD_NUMBER"
@@ -184,4 +184,4 @@ setupEnvironment
 # Build, promote, release if necessary
 buildAndPromote
 
-doRelease
+doRelease "sonarsource-public-releases"
