@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-#### TRAVIS UTILS
-
 function installTravisTools {
   mkdir -p ~/.local
   curl -sSL https://github.com/SonarSource/travis-utils/tarball/v57 | tar zx --strip-components 1 -C ~/.local
@@ -14,11 +12,14 @@ function installTravisTools {
 function setupEnvironment {
   installTravisTools
 
-  export PROJECT_NAME="test_andrei_private" # ${CIRRUS_REPO_NAME}
   export GITHUB_REPO=${TRAVIS_REPO_SLUG} # CIRRUS_REPO_FULL_NAME
+  SPLIT_NAME=(${TRAVIS_REPO_SLUG//\// })
+  export PROJECT_NAME=${SPLIT_NAME[1]}
+
   export BUILD_NUMBER=${TRAVIS_BUILD_NUMBER} # cirrusBuildNumber() in cirrus-env script...
   export PULL_REQUEST_NUMBER=${TRAVIS_PULL_REQUEST} # ${CIRRUS_PR:-false}
   export PIPELINE_ID=${TRAVIS_BUILD_ID} # CIRRUS_BUILD_ID
+
   export ARTIFACT_URL="$ARTIFACTORY_URL/webapp/#/builds/$PROJECT_NAME/$BUILD_NUMBER"
 
   if [ -z $TRAVIS_PULL_REQUEST_SHA ]; then

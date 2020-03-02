@@ -2,13 +2,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.sonarsource.test_andrei_private</groupId>
-  <artifactId>test_andrei_private</artifactId>
+  <groupId>org.sonarsource.test_andrei_public</groupId>
+  <artifactId>test_andrei_public</artifactId>
   <version>1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>SonarSource OSS test_andrei_private</name>
-  <description>test_andrei_private pom of SonarSource public projects</description>
+  <name>SonarSource OSS test_andrei_public</name>
+  <description>Parent pom of SonarSource public projects</description>
   <url>http://docs.sonarqube.org/display/PLUG/Plugin+Library</url>
   <inceptionYear>2009</inceptionYear>
   <!-- License defined here, because most of projects uses this license. Can be overridden in children POMs. -->
@@ -61,9 +61,9 @@
   </mailingLists>
 
   <scm>
-    <connection>scm:git:https://github.com/SonarSource/test_andrei_private.git</connection>
-    <developerConnection>scm:git:git@github.com:SonarSource/test_andrei_private.git</developerConnection>
-    <url>https://github.com/SonarSource/test_andrei_private</url>
+    <connection>scm:git:https://github.com/SonarSource/test_andrei_public.git</connection>
+    <developerConnection>scm:git:git@github.com:SonarSource/test_andrei_public.git</developerConnection>
+    <url>https://github.com/SonarSource/test_andrei_public</url>
     <tag>HEAD</tag>
   </scm>
   <issueManagement>
@@ -136,7 +136,7 @@
     <license.years>${project.inceptionYear}-2020</license.years>
     <license.mailto>mailto:info AT sonarsource DOT com</license.mailto>
 
-    <gitRepositoryName>test_andrei_private</gitRepositoryName>
+    <gitRepositoryName>test_andrei_public</gitRepositoryName>
   </properties>
 
   <build>
