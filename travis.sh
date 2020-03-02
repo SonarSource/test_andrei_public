@@ -155,7 +155,7 @@ function doRelease {
   echo "RELEASE_URL: $RELEASE_URL"
   echo "DATA_JSON: $DATA_JSON"
 
-  HTTP_CODE=$(curl -s -o /dev/null -w %{http_code} \
+  HTTP_CODE=$(curl -s --output release-out.txt -w %{http_code} \
     -H "X-JFrog-Art-Api:${ARTIFACTORY_API_KEY}" \
     -H "Content-type: application/json" \
     -X POST \
@@ -164,9 +164,13 @@ function doRelease {
 
   if [ "$HTTP_CODE" != "200" ]; then
     echo "Cannot release build ${PROJECT_NAME} #${BUILD_NUMBER}: ($HTTP_CODE)"
+    echo ""
+    echo "ERROR:"
+    cat release-out.txt
+    echo ""
     exit 1
   else
-    echo "Build ${PROJECT_NAME} #${BUILD_NUMBER} promoted to ${TARGET_REPOSITORY}"
+    echo "Build ${PROJECT_NAME} #${BUILD_NUMBER} released to ${TARGET_REPOSITORY}"
   fi
 
   # Notify Burgr
