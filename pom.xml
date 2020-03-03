@@ -4,7 +4,7 @@
 
   <groupId>org.sonarsource.test_andrei_public</groupId>
   <artifactId>test_andrei_public</artifactId>
-  <version>2</version>
+  <version>3</version>
   <packaging>pom</packaging>
 
   <name>SonarSource OSS test_andrei_public</name>
